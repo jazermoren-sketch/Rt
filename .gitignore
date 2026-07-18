@@ -9,3 +9,6 @@ __pycache__/
 .ruff_cache/
 .venv/
 venv/
+
+data/*.sqlite3
+data/*.sqlite3-*

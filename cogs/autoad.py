@@ -14,7 +14,7 @@ from discord.ext import commands, tasks
 from cogs.autoad_manager import AutoAdManager
 from utils.embed_factory import ERROR_COLOR, SUCCESS_COLOR, make_embed
 from utils.permissions import admin_only
-from views.autoad_views import AutoAdModeSelectView, AutoAdPreviewView
+from views.autoad_views import AutoAdModeSelectView, AutoAdSelectView
 
 LOGGER = logging.getLogger(__name__)
 VALID_MODES = {"timer", "rotate", "random", "every_message", "message_count"}
@@ -192,46 +192,36 @@ class AutoAdCog(commands.Cog):
             ephemeral=True,
         )
 
-    @autoad.command(name="edit", description="Edit advertisement text, image, or embed fields by ID")
-    @admin_only()
-    async def edit(
+    async def _send_autoad_selector(
         self,
         interaction: discord.Interaction,
-        ad_id: str,
-        name: str | None = None,
-        message: str | None = None,
-        image_url: str | None = None,
-        embed_title: str | None = None,
-        embed_description: str | None = None,
+        operation: str,
+        *,
+        channel: discord.abc.Messageable | None = None,
     ) -> None:
         if not interaction.guild:
             return
         await interaction.response.defer(ephemeral=True)
         config = await self.manager.get_config(interaction.guild.id)
-        for ad in config.get("ads", []):
-            if ad.get("id") == ad_id:
-                for key, value in {
-                    "name": name,
-                    "message": message,
-                    "image_url": image_url,
-                    "embed_title": embed_title,
-                    "embed_description": embed_description,
-                }.items():
-                    if value is not None:
-                        ad[key] = value
-                await self.manager.save_config(interaction.guild.id, config)
-                await interaction.followup.send(embed=make_embed("Advertisement updated", f"Updated `{ad_id}`.", color=SUCCESS_COLOR), ephemeral=True)
-                return
-        await interaction.followup.send(embed=make_embed("Not found", f"No advertisement with ID `{ad_id}`.", color=ERROR_COLOR), ephemeral=True)
-
-    @autoad.command(name="delete", description="Delete an advertisement by ID")
-    @admin_only()
-    async def delete(self, interaction: discord.Interaction, ad_id: str) -> None:
-        if not interaction.guild:
+        ads = list(config.get("ads", []))
+        if not ads:
+            await interaction.followup.send(embed=make_embed("No AutoAds", "There are no advertisements to manage.", color=ERROR_COLOR), ephemeral=True)
             return
-        await interaction.response.defer(ephemeral=True)
-        ok = await self.delete_ad(interaction.guild.id, ad_id)
-        await interaction.followup.send(embed=make_embed("Deleted" if ok else "Not found", f"Advertisement `{ad_id}`.", color=SUCCESS_COLOR if ok else ERROR_COLOR), ephemeral=True)
+        await interaction.followup.send(
+            embed=make_embed("Select AutoAd", f"Choose one AutoAd to `{operation}`, or choose **Manage All AutoAds** when bulk action is intended."),
+            view=AutoAdSelectView(self, interaction.guild.id, ads, operation, channel=channel),
+            ephemeral=True,
+        )
+
+    @autoad.command(name="edit", description="Select an advertisement to edit")
+    @admin_only()
+    async def edit(self, interaction: discord.Interaction) -> None:
+        await self._send_autoad_selector(interaction, "edit")
+
+    @autoad.command(name="delete", description="Select an advertisement to delete")
+    @admin_only()
+    async def delete(self, interaction: discord.Interaction) -> None:
+        await self._send_autoad_selector(interaction, "delete")
 
     @autoad.command(name="list", description="List advertisements")
     @admin_only()
@@ -260,15 +250,10 @@ class AutoAdCog(commands.Cog):
         await self.manager.save_config(interaction.guild.id, config)
         await interaction.followup.send(embed=make_embed("Channels updated", f"{channel.mention} is {'enabled' if enabled else 'disabled'} for AutoAd.", color=SUCCESS_COLOR), ephemeral=True)
 
-    @autoad.command(name="send", description="Manually send the next advertisement")
+    @autoad.command(name="send", description="Select an advertisement to send manually")
     @admin_only()
     async def send(self, interaction: discord.Interaction, channel: discord.TextChannel | None = None) -> None:
-        if not interaction.guild:
-            return
-        await interaction.response.defer(ephemeral=True)
-        target = channel or interaction.channel
-        ok = await self.send_autoad(target, interaction.guild.id, manual=True) if target else False
-        await interaction.followup.send(embed=make_embed("Sent" if ok else "No ads", "Manual advertisement dispatch complete.", color=SUCCESS_COLOR if ok else ERROR_COLOR), ephemeral=True)
+        await self._send_autoad_selector(interaction, "send", channel=channel or interaction.channel)
 
     @autoad.command(name="enable", description="Enable AutoAd")
     @admin_only()
@@ -373,25 +358,10 @@ class AutoAdCog(commands.Cog):
         await self.manager.save_config(interaction.guild.id, data)
         await interaction.followup.send(embed=make_embed("Imported", "AutoAd configuration imported.", color=SUCCESS_COLOR), ephemeral=True)
 
-    @autoad.command(name="preview", description="Preview an advertisement by ID")
+    @autoad.command(name="preview", description="Select an advertisement to preview")
     @admin_only()
-    async def preview(self, interaction: discord.Interaction, ad_id: str) -> None:
-        if not interaction.guild:
-            return
-        await interaction.response.defer(ephemeral=True)
-        config = await self.manager.get_config(interaction.guild.id)
-        ad = next((item for item in config.get("ads", []) if item.get("id") == ad_id), None)
-        if not ad:
-            await interaction.followup.send(embed=make_embed("Not found", f"No advertisement with ID `{ad_id}`.", color=ERROR_COLOR), ephemeral=True)
-            return
-        content, embed, files = self.manager.build_payload(ad)
-        await interaction.followup.send(
-            content=content,
-            embed=embed or make_embed(ad.get("name", "Advertisement"), ad.get("message") or "No embed content."),
-            files=files,
-            view=AutoAdPreviewView(self, interaction.guild.id, ad_id),
-            ephemeral=True,
-        )
+    async def preview(self, interaction: discord.Interaction) -> None:
+        await self._send_autoad_selector(interaction, "preview")
 
 
 async def setup(bot: commands.Bot) -> None:
