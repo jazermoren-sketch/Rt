@@ -1,0 +1,30 @@
+{
+  "enabled": false,
+  "mode": "timer",
+  "interval_minutes": 60,
+  "message_count": 25,
+  "channels": [
+    1526427996993359943
+  ],
+  "ads": [
+    {
+      "id": "69f86551",
+      "name": "server",
+      "message": "خشو سيرفر أطلس \nhttps://discord.gg/DWFvNtbAf",
+      "image_url": null,
+      "embed_title": null,
+      "embed_description": null,
+      "attachments": [],
+      "created_at": "2026-07-17T20:05:40.963673+00:00",
+      "sent": 0
+    }
+  ],
+  "next_index": 0,
+  "message_counter": 0,
+  "stats": {
+    "sent": 0,
+    "manual_sent": 0,
+    "triggered_sent": 0,
+    "last_sent_at": null
+  }
+}
