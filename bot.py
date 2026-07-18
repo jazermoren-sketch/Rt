@@ -42,11 +42,14 @@ async def on_ready() -> None:
 
 async def main() -> None:
     """Load extensions and start the bot."""
-    token = "YOUR_BOT_TOKEN"
+    token = os.getenv("DISCORD_TOKEN")
+    if not token:
+        raise RuntimeError("DISCORD_TOKEN environment variable is required to start the bot.")
 
     async with bot:
         for extension in EXTENSIONS:
             await bot.load_extension(extension)
+            LOGGER.info("Loaded extension: %s", extension)
         await bot.start(token)
 
 

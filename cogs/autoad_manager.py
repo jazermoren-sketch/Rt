@@ -5,7 +5,7 @@ import base64
 import datetime as dt
 import io
 import random
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Any
 from uuid import uuid4
 
@@ -77,7 +77,7 @@ class AutoAdManager:
         config = await self.get_config(guild_id)
         attachments = []
         if attachment:
-            attachments.append(vars(await StoredAttachment.from_discord_attachment(attachment)))
+            attachments.append(asdict(await StoredAttachment.from_discord_attachment(attachment)))
         ad = {
             "id": uuid4().hex[:8],
             "name": name,

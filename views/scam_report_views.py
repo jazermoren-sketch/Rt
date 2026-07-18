@@ -22,6 +22,7 @@ class ScamReportModal(discord.ui.Modal, title="تقديم بلاغ تشهير ب
         self.target_channel = target_channel
 
     async def on_submit(self, interaction: discord.Interaction) -> None:
+        await interaction.response.defer(ephemeral=True)
         embed = discord.Embed(title="🚫 تشهير بنصاب 🚫", description="**تم التحقق من هذا التشهير من قبل الإدارة**", color=discord.Color.red())
         embed.add_field(name="👤 المبلغ", value=f"`{self.amount.value}`", inline=True)
         embed.add_field(name="🆔 الآيدي", value=f"`{self.scammer_id.value}`", inline=True)
@@ -33,7 +34,7 @@ class ScamReportModal(discord.ui.Modal, title="تقديم بلاغ تشهير ب
             embed.set_image(url=str(self.evidence_url.value))
         embed.set_footer(text=f"تم النشر في: {self.target_channel.name} | {dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         await self.target_channel.send(content="@everyone ⚠️ احذروا هذا النصاب!", embed=embed)
-        await interaction.response.send_message("✅ تم إرسال بلاغك بنجاح.", ephemeral=True)
+        await interaction.followup.send("✅ تم إرسال بلاغك بنجاح.", ephemeral=True)
 
 
 class ScamReportView(discord.ui.View):
